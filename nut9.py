@@ -3,18 +3,18 @@ The idea, roughly, is as follows:
 - Lines can be expressed as binary strings (i.e. sequences of 1s and 0s).
 - The next line is calculated by "sliding" a 5-bit buffer through a line and
   piecing together a new line bit by bit, according to the given rules.
-- Since the buffer has 5 bits, it can exist in 2^5 = 32 different states, each
+- Since the buffer has 5 bits, it can exist in 2 ^ 5 = 32 different states, each
   of which corresponds either to a filled or blank square (1 or 0). Since this
   is determined by fixed rules, the state—result relations need to be calculated
   only once, and can then be accessed from memory.
 - Nothing beyond a primitive integer and basic bitwise operations is needed to
-  to handle the buffer.
+  handle the buffer.
 - When calculating lines, two things are kept track of: (1) the patterns of
   filled and blank squares, and (2) their horizontal placement relative to the
-  the first line ("offset").
+  first line ("offset").
 - Each new line is stored in two sets: one which considers both the pattern and
-  and its offset, and another which considers only the pattern. Checking the
-  the membership of a new line in these sets is key in distinguishing "blinking"
+  its offset, and another which considers only the pattern. Checking the
+  membership of a new line in these sets is key in distinguishing "blinking"
   vs. "gliding" patterns.
 """
 
@@ -46,7 +46,7 @@ class Pattern(object):
 
     Because blank squares on either end are meaningless, the first and last list
     entries always stand for filled squares. That is, runs of filled squares are
-    found in even, and blank squares in odd indexes.
+    found in even (0, 2, 4...), and blank squares in odd (1, 3, 5...) indexes.
 
     In addition to the pattern itself, also its offset (distance of the leading
     filled square relative to the initial line) is memorized.
@@ -57,21 +57,19 @@ class Pattern(object):
         self.count = 0
 
     def insert(self, bit, steps = 1):
-        if not self.runs and not self.count and not bit:  # Disregards blanks
+        if not self.runs and not self.count and not bit:  # Disregard blanks
             return                                        # at beginning.
 
         filled = len(self.runs) % 2 == 0
         if (filled and not bit) or (not filled and bit):
             self.runs.append(self.count)
             self.count = 0
-
         self.count += steps
 
     def complete(self):
         if len(self.runs) % 2 == 0:       # Append the "hanging" run of filled
             self.runs.append(self.count)  # squares, if any.
             self.count = 0
-
         return self
 
 
@@ -98,7 +96,7 @@ def read(pattern, states):
                 p.offset += steps           # filled square has been written.
             run -= steps
 
-        bit = (bit + 1) % 2
+        bit = (bit + 1) % 2    # Flip the bit before going to the next run.
 
     while buffer > 0:                     # After reading through the pattern,
         buffer = (buffer << 1) & 0b11110  # keep still writing until the buffer
@@ -130,16 +128,15 @@ def solve(pattern, states):
 
         if not pattern.runs[0]:  # Got a pattern with no filled squares.
             return 'vanishing'
+
         t = (pattern.offset,) + tuple(pattern.runs)
-
-        if t in lines:         # Exact same line (offset + pattern) has been
-            return 'blinking'  # encountered before.
-
+        if t in lines:           # Exact same line (offset + pattern) has been
+            return 'blinking'    # encountered before.
         lines.add(t)
-        t = (0,) + tuple(pattern.runs)
 
-        if t in patterns:     # Exact same pattern has been encountered before,
-            return 'gliding'  # but at a different offset.
+        t = (0,) + tuple(pattern.runs)
+        if t in patterns:        # Exact same pattern has been encountered
+            return 'gliding'     # before, but at a different offset.
         patterns.add(t)
 
     return 'other'
